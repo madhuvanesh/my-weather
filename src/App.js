@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Children } from 'react';
 import { format } from 'react-string-format';
+import Moment from 'moment';
+import configData from "./config.json";
 
   const App = () => {
-  const [lat, setLat] = useState(null);
-  const [lng, setLng] = useState(null);
+  // const [lat, setLat] = useState(0.0);
+  // const [lng, setLng] = useState(0.0);
   const [place, setPlace] = useState("");
   const [status, setStatus] = useState(null);
-  const [locationKey, setLocation] = useState("");
+  const [locationKey, setLocationKey] = useState("");
   const [items, setItems] = useState([]);
+  //const [weather, setWeather] = useState(null);
   const [error, setError] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const getWeather = () => {
-    fetch(format('http://dataservice.accuweather.com/forecasts/v1/hourly/12hour/{0}?language=en-us&apikey=yDLAJV3XBOSYGjk4Vier2AXrWcrB4aAs',locationKey),
+
+    fetch(format('{0}{1}forecasts/v1/hourly/12hour/{2}?language=en-us&apikey={3}',configData.herokuappurl,configData.accuweatherurl,locationKey,configData.accuweatherappkey),
       {
         method: "GET"
       }
@@ -26,22 +30,30 @@ import { format } from 'react-string-format';
         // instead of a catch() block so that we don't swallow
         // exceptions from actual bugs in components.
         (error) => {
-          setIsLoaded(true);
-          setError(error);
+         setIsLoaded(true);
+         setError(error);
         }     
     )
   }
 
-  useEffect(() => {
+  const logout = () =>{
+
+  }
+
+  useEffect(() => {      
+    console.log("componentDidMount");
+    
     if (!navigator.geolocation) {
       setStatus('Geolocation is not supported by your browser');
     } else {
       setStatus('Locating...');
       navigator.geolocation.getCurrentPosition((position) => {
-        setLat(position.coords.latitude);
-        setLng(position.coords.longitude); 
-        
-        fetch(format('http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?q={0},{1}&apikey=yDLAJV3XBOSYGjk4Vier2AXrWcrB4aAs',lat,lng),
+        //setLat(position.coords.latitude);
+        //setLng(position.coords.longitude);                 
+
+        var lat = position.coords.latitude;
+        var lng = position.coords.longitude;
+        fetch(format('{0}locations/v1/cities/geoposition/search?q={1},{2}&apikey={3}',configData.accuweatherurl,lat,lng,configData.accuweatherappkey),
           {
             method: "GET"
           }
@@ -51,7 +63,7 @@ import { format } from 'react-string-format';
           (result) => {
             setStatus(null);
             setIsLoaded(true);
-            setLocation(result.Key);
+            setLocationKey(result.Key);
             setPlace(format('{0},{1},{2}',result.LocalizedName, result.AdministrativeArea.ID,result.Country.ID));
           },
           // Note: it's important to handle errors here
@@ -61,26 +73,34 @@ import { format } from 'react-string-format';
             setIsLoaded(true);
             setError(error);
           }
-        )
+        );
       }, () => {
         setStatus('Unable to retrieve your location');
-      });
-    }          
+      });      
+    }
+
+    return () => {
+      console.log("componentDidUnmount");
+    };
+   
   },[]);
 
 
   return (
     <div className="App">
       <p>{status}</p>
-      <button onClick={getWeather}>Weather forecast in {place} for next 12 hours</button>
+      <button id="forecast" onClick={getWeather}>Click here to fetch weather forecast in {place}, locationKey: {locationKey} for next 12 hours:</button>
      <ul>
           {items.map(item => (
             <li key={item.EpochDateTime}>
-             {item.DateTime}&nbsp;{item.Temperature.Value}&nbsp;{item.Temperature.Unit}
+             {Moment(item.DateTime).format("dddd, MMMM Do YYYY, h:mm:ss a")}&nbsp;{item.Temperature.Value}&nbsp;{item.Temperature.Unit}
             </li>
           ))}
       </ul>
-     
+     <button id="signout"  onClick={(e) => {
+      e.preventDefault();
+      window.location.href='/signout';
+      }}>Logout</button>
     </div>
   );
 }
